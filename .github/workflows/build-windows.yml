@@ -38,16 +38,9 @@ jobs:
       # 产出免安装的裸 exe（素材已内嵌进二进制，双击直接运行）
       - name: Build portable exe (no installers)
         uses: tauri-apps/tauri-action@v0
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           args: --no-bundle    # 只编译 exe，不打 NSIS/MSI 安装包
-          # 仅 tag 触发（v*）时创建 GitHub Release；手动触发时留空 → 只构建 + 上传 artifact
-          tagName: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || '' }}
-          releaseName: ${{ startsWith(github.ref, 'refs/tags/') && format('big-fat-fish-pet {0}', github.ref_name) || '' }}
-          releaseBody: '蓝色大肥鱼桌面宠物 · Windows 免安装便携版（双击 exe 直接运行）'
-          releaseDraft: true
-          prerelease: false
+          # 不传 tagName → tauri-action 只构建不建 release；release 由下方 gh release 步骤处理
 
       - name: Package portable zip
         shell: bash
@@ -83,3 +76,26 @@ jobs:
           name: big-fat-fish-pet-win-portable-zip
           path: src-tauri/target/release/big-fat-fish-pet_win_portable.zip
           if-no-files-found: error
+
+      # tag 触发（v*）时创建 GitHub Release 并附加 exe + zip
+      - name: Create GitHub Release
+        if: startsWith(github.ref, 'refs/tags/')
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          cd src-tauri/target/release
+          gh release create "$GITHUB_REF_NAME" \
+            big-fat-fish-pet_win_portable.exe \
+            big-fat-fish-pet_win_portable.zip \
+            --title "big-fat-fish-pet $GITHUB_REF_NAME" \
+            --notes "蓝色大肥鱼 · 桌面宠物（Windows 免安装便携版）
+
+- big-fat-fish-pet_win_portable.exe — 单文件便携版，双击直接运行
+- big-fat-fish-pet_win_portable.zip — exe + 使用说明
+
+支持 Win10 / Win11（需系统自带 WebView2）。
+
+致谢：复刻自 https://github.com/PC2005-cloud/dsh-pet 的交互逻辑与动画素材，
+版权归原作者所有，仅限个人使用。" \
+            --draft
