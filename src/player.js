@@ -67,6 +67,9 @@ export class DoubleBufferPlayer {
         else setTimeout(restore, 0);
       }
       el.classList.add('is-front'); // 新视频淡入（CSS transition 0.18s）
+      // 清除可能残留的 inline opacity（该视频曾作为"旧视频"被瞬隐设过 opacity:0，
+      // 否则会覆盖 CSS 的 is-front{opacity:1}，导致这个视频永远透明→宠物消失）
+      el.style.opacity = '';
       this.front = this.front === 0 ? 1 : 0;
       this.pending = null;
       // 按实际朝向设置新视频镜像（inline transform，不影响旧视频淡出）
