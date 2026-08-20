@@ -37,15 +37,6 @@
     "shortDescription": "蓝色大肥鱼桌面宠物",
     "longDescription": "常驻桌面的蓝色大肥鱼桌面宠物（Q版蓝发女仆），透明无边框置顶，可拖拽、点击回应、屏幕漫游。",
     "category": "Utility",
-    "icon": ["icons/icon.png", "icons/icon.ico"],
-    "windows": {
-      "nsis": {
-        "installMode": "currentUser",
-        "languages": ["SimpChinese", "English"]
-      },
-      "wix": {
-        "language": "zh-CN"
-      }
-    }
+    "icon": ["icons/icon.png", "icons/icon.ico"]
   }
 }

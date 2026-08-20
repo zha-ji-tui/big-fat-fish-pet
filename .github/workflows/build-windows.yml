@@ -1,4 +1,4 @@
-name: Build Windows Installers
+name: Build Windows Portable Exe
 
 on:
   workflow_dispatch:        # 手动触发：Actions 页点 "Run workflow"
@@ -6,7 +6,7 @@ on:
     tags: ['v*']            # 打 tag v0.1.0 等自动触发并发布 Release
 
 permissions:
-  contents: write           # 创建 GitHub Release 需要写权限（默认只读会报 Resource not accessible）
+  contents: write           # 创建 GitHub Release 需要写权限
 
 jobs:
   build-windows:
@@ -35,31 +35,51 @@ jobs:
       - name: Fetch pet animation assets (51 webm)
         run: npm run fetch:assets
 
-      - name: Build frontend (vite)
-        run: npm run build
-
-      - name: Build & bundle installers (NSIS exe + MSI)
+      # 产出免安装的裸 exe（素材已内嵌进二进制，双击直接运行）
+      - name: Build portable exe (no installers)
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
+          args: --no-bundle    # 只编译 exe，不打 NSIS/MSI 安装包
           # 仅 tag 触发（v*）时创建 GitHub Release；手动触发时留空 → 只构建 + 上传 artifact
           tagName: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || '' }}
           releaseName: ${{ startsWith(github.ref, 'refs/tags/') && format('big-fat-fish-pet {0}', github.ref_name) || '' }}
-          releaseBody: '蓝色大肥鱼桌面宠物 Windows 安装包（NSIS exe / MSI）'
+          releaseBody: '蓝色大肥鱼桌面宠物 · Windows 免安装便携版（双击 exe 直接运行）'
           releaseDraft: true
           prerelease: false
 
-      - name: Upload NSIS installer artifact
+      - name: Package portable zip
+        shell: bash
+        run: |
+          cd src-tauri/target/release
+          cp big-fat-fish-pet.exe "big-fat-fish-pet_win_portable.exe"
+          # 附带说明
+          cat > 使用说明.txt <<'EOF'
+          蓝色大肥鱼 · 桌面宠物（Windows 免安装版）
+
+          使用方法：双击 big-fat-fish-pet_win_portable.exe 即可运行，
+          无需安装，素材已内嵌在 exe 内。
+
+          交互：点击有回应、按住拖拽移动、右键菜单可退出/重置位置。
+          支持 Win10 / Win11（需系统自带 WebView2，一般已预装）。
+
+          致谢：本项目复刻自 https://github.com/PC2005-cloud/dsh-pet
+          的交互逻辑与动画素材，版权归原作者所有，仅限个人使用。
+          EOF
+          powershell -Command "Compress-Archive -Path 'big-fat-fish-pet_win_portable.exe','使用说明.txt' -DestinationPath 'big-fat-fish-pet_win_portable.zip' -Force"
+          ls -la big-fat-fish-pet_win_portable.*
+
+      - name: Upload portable exe
         uses: actions/upload-artifact@v4
         with:
-          name: big-fat-fish-pet-windows-installer
-          path: src-tauri/target/release/bundle/nsis/*.exe
+          name: big-fat-fish-pet-win-portable-exe
+          path: src-tauri/target/release/big-fat-fish-pet_win_portable.exe
           if-no-files-found: error
 
-      - name: Upload MSI artifact
+      - name: Upload portable zip
         uses: actions/upload-artifact@v4
         with:
-          name: big-fat-fish-pet-windows-msi
-          path: src-tauri/target/release/bundle/msi/*.msi
+          name: big-fat-fish-pet-win-portable-zip
+          path: src-tauri/target/release/big-fat-fish-pet_win_portable.zip
           if-no-files-found: error

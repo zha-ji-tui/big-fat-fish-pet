@@ -36,27 +36,31 @@ npm run tauri:dev
 npm run tauri:build
 ```
 
-## Windows 安装包（Win10 / Win11）
+## Windows 便携版（Win10 / Win11，免安装）
 
-Tauri 不支持从 Linux 交叉编译 Windows 目标，提供两种方式在 Windows 上产出 exe 安装包：
+Tauri 不支持从 Linux 交叉编译 Windows 目标，提供两种方式产出**免安装的便携 exe**（素材已内嵌，双击直接运行，无需安装）：
 
 **方式 A：GitHub Actions（推荐，无需 Windows 机器）**
 把本仓库推到 GitHub 后：
 ```sh
 git push origin main
-# 在 GitHub 仓库页 → Actions → "Build Windows Installers" → Run workflow
+# 在 GitHub 仓库页 → Actions → "Build Windows Portable Exe" → Run workflow
 # 或在本地打 tag：git tag v0.1.0 && git push origin v0.1.0
 ```
-构建产物（`src-tauri/target/release/bundle/nsis/*-setup.exe` 与 `*.msi`）自动上传为 artifact，打 tag 时还会生成 GitHub Release 草稿。
+构建产物自动上传为 artifact：
+- `big-fat-fish-pet_win_portable.exe` —— 单文件便携版，双击即用
+- `big-fat-fish-pet_win_portable.zip` —— exe + 使用说明 的压缩包
+打 tag 时还会生成 GitHub Release 草稿。
 
 **方式 B：Windows 本机构建**
-在 Win10/11 机器上装 Rust + Node 20 + VS Build Tools（含 WebView2 由系统自带），然后：
+在 Win10/11 机器上装 Rust + Node 20 + VS Build Tools，然后：
 ```sh
-npm install && npm run fetch:assets && npm run tauri:build
+npm install && npm run fetch:assets && npm run tauri:build -- --no-bundle
 ```
-产物在 `src-tauri/target/release/bundle/nsis/*-setup.exe`（NSIS 安装器）与 `msi/*.msi`。
+产物在 `src-tauri/target/release/big-fat-fish-pet.exe`（免安装便携版）。
 
-> 说明：Windows 端用系统自带 WebView2 播放 VP9-alpha 透明视频，无需额外组件；`fetch:assets` 已改为跨平台（node tar 解包），Windows 上可直接运行。
+> 说明：Windows 端用系统自带 WebView2 播放 VP9-alpha 透明视频（Win10/11 一般已预装），无需额外组件；`fetch:assets` 已改为跨平台（node tar 解包），Windows 上可直接运行。
+
 
 
 > 仅调试前端逻辑而不起 Rust 壳：`npm run dev` 后浏览器打开 `http://localhost:5173`
