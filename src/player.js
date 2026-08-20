@@ -43,15 +43,30 @@ export class DoubleBufferPlayer {
     el.playsInline = true;
     el.onended = once ? () => this.onEnded() : undefined;
     el.load();
+    // 立即尝试播放，确保 playing 事件触发（否则切换时机依赖 loadeddata 兜底）
+    el.play().catch(() => {});
 
+    // 切换时机：等视频真正开始播放输出第一帧（playing），而不是 loadeddata。
+    // loadeddata 只表示数据就绪，第一帧可能还没渲染——此时淡入会露出半透明黑底
+    // （WebKitGTK 不合成 video alpha），产生"切换闪烁"。playing 确保有画面再切换。
     const onReady = () => {
+      el.removeEventListener('playing', onReady);
       el.removeEventListener('loadeddata', onReady);
       // 过期检查：期间又有更新切换则本回调作废（防双透明/宠物消失）
       if (this.pending?.gen !== gen) return;
-      // 交换前后台
+      // 交换前后台：新视频立即显示，旧视频立即隐藏（不做交叉淡入，
+      // 避免新旧黑底半透明叠加变暗闪烁——alpha 失效环境下叠加=闪烁）
       const old = this.front === 0 ? this.a : this.b;
-      el.classList.add('is-front');
-      if (old && old !== el) old.classList.remove('is-front');
+      if (old && old !== el) {
+        old.classList.remove('is-front');
+        // 旧视频瞬间隐藏（绕过 0.18s 淡出 transition，避免黑底叠加闪烁）
+        old.style.transition = 'none';
+        old.style.opacity = '0';
+        const restore = () => { old.style.transition = ''; };
+        if (typeof requestAnimationFrame === 'function') requestAnimationFrame(restore);
+        else setTimeout(restore, 0);
+      }
+      el.classList.add('is-front'); // 新视频淡入（CSS transition 0.18s）
       this.front = this.front === 0 ? 1 : 0;
       this.pending = null;
       // 按实际朝向设置新视频镜像（inline transform，不影响旧视频淡出）
@@ -59,7 +74,8 @@ export class DoubleBufferPlayer {
       el.play().catch(() => {});
       if (this.onReadyOnce) this.onReadyOnce(el);
     };
+    el.addEventListener('playing', onReady);
     el.addEventListener('loadeddata', onReady);
-    if (el.readyState >= 2) onReady();
+    if (el.readyState >= 2 && !el.paused) onReady();
   }
 }
