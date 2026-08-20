@@ -29,7 +29,14 @@ export function createTauriFacade({ rootEl, stageEl, size, corner }) {
   // 缓存窗口左上角（屏幕坐标）：WebView 里 e.clientX 是窗口内坐标，
   // 拖拽/点击需要换算成屏幕坐标才能与 setCenter 对齐（否则角色会左右乱跳）。
   let winPos = { x: 0, y: 0 };
+  // 初次拖拽瞬移根因：事件自带的 screenX/Y 在 pointer capture 建立的瞬间
+  // （首个 pointerdown/move）会返回 0 或窗口内坐标，用它算出的"屏幕坐标"是错的，
+  // 导致首次 delta 巨大 → 宠物闪现到远处。所以这里统一用 clientX + 窗口位置，
+  // 不信任 screenX。窗口位置在 controller 启动时经 fireMoveTo 同步初始化，
+  // 此处的 outerPosition 仅作启动前的兜底（不覆盖 fireMoveTo 已更新的新值）。
+  let winPosInit = false;
   win.outerPosition().then((p) => {
+    if (winPosInit) return; // fireMoveTo 已给出新值，别用旧值覆盖
     winPos = { x: p.x, y: p.y };
     last = { x: p.x + halfW, y: p.y + halfH };
   }).catch(() => {});
@@ -41,18 +48,17 @@ export function createTauriFacade({ rootEl, stageEl, size, corner }) {
   function fireMoveTo(cx, cy) {
     last = { x: cx, y: cy };
     winPos = { x: Math.round(cx - halfW), y: Math.round(cy - halfH) };
+    winPosInit = true;
     win.setPosition(new LogicalPosition(winPos.x, winPos.y));
   }
 
   return {
     size, halfW, halfH, corner,
 
-    /** 事件坐标 → 屏幕坐标：优先用事件自带 screenX/Y（真实屏幕坐标），
-     * 不可用（某些合成事件为 0）时退回 clientX+窗口偏移。 */
+    /** 事件坐标 → 屏幕坐标：统一用 clientX + 窗口位置。
+     * 不用事件自带 screenX/Y——初次拖拽（pointer capture 建立瞬间）它们的值
+     * 会变成 0 或窗口内坐标，导致首次 delta 巨大、宠物闪现到远处。 */
     toScreen(e) {
-      if (Number.isFinite(e.screenX) && e.screenX !== 0) {
-        return { x: e.screenX, y: e.screenY };
-      }
       return { x: e.clientX + winPos.x, y: e.clientY + winPos.y };
     },
 
