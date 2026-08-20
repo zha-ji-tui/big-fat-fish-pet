@@ -1,0 +1,10 @@
+node_modules/
+dist/
+.npm-cache/
+public/thumb/*.webm
+.tmp-a/
+/tmp-*log
+artifacts/
+
+.cargo-home/
+.target/
