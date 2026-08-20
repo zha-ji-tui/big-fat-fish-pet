@@ -66,16 +66,23 @@ export class DoubleBufferPlayer {
         if (typeof requestAnimationFrame === 'function') requestAnimationFrame(restore);
         else setTimeout(restore, 0);
       }
-      el.classList.add('is-front'); // 新视频淡入（CSS transition 0.18s）
-      // 清除可能残留的 inline opacity（该视频曾作为"旧视频"被瞬隐设过 opacity:0，
-      // 否则会覆盖 CSS 的 is-front{opacity:1}，导致这个视频永远透明→宠物消失）
-      el.style.opacity = '';
-      this.front = this.front === 0 ? 1 : 0;
-      this.pending = null;
-      // 按实际朝向设置新视频镜像（inline transform，不影响旧视频淡出）
-      el.style.transform = this.getFacing() === 'right' ? 'scaleX(-1)' : '';
+      // 新视频：先以 opacity:0 播放约一帧（给 WebKitGTK 合成器预热首帧，
+      // 否则瞬间显示会是黑帧；而淡入又会让黑底渐显闪烁）。预热后瞬间显示。
+      el.classList.add('is-front');
+      el.style.transition = 'none'; // 预热后瞬间显示，不做淡入
       el.play().catch(() => {});
-      if (this.onReadyOnce) this.onReadyOnce(el);
+      const commit = () => {
+        if (this.pending?.gen !== gen) return; // 预热期间又切走了
+        el.style.opacity = ''; // 清除残留 inline opacity → 回到 CSS is-front{opacity:1}
+        this.front = this.front === 0 ? 1 : 0;
+        this.pending = null;
+        // 按实际朝向设置新视频镜像
+        el.style.transform = this.getFacing() === 'right' ? 'scaleX(-1)' : '';
+        if (this.onReadyOnce) this.onReadyOnce(el);
+      };
+      // 预热一帧（rAF）。Node 测试环境无 rAF → 同步 commit，保证测试可断言。
+      if (typeof requestAnimationFrame === 'function') requestAnimationFrame(commit);
+      else commit();
     };
     el.addEventListener('playing', onReady);
     el.addEventListener('loadeddata', onReady);
