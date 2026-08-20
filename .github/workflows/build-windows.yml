@@ -85,17 +85,21 @@ jobs:
         shell: bash
         run: |
           cd src-tauri/target/release
+          cat > /tmp/release_notes.md <<'NOTES'
+          蓝色大肥鱼 · 桌面宠物（Windows 免安装便携版）
+
+          本包包含：
+          * big-fat-fish-pet_win_portable.exe — 单文件便携版，双击直接运行
+          * big-fat-fish-pet_win_portable.zip — exe + 使用说明
+
+          支持 Win10 / Win11（需系统自带 WebView2）。
+
+          致谢：复刻自 https://github.com/PC2005-cloud/dsh-pet 的交互逻辑与动画素材，
+          版权归原作者所有，仅限个人使用。
+          NOTES
           gh release create "$GITHUB_REF_NAME" \
             big-fat-fish-pet_win_portable.exe \
             big-fat-fish-pet_win_portable.zip \
             --title "big-fat-fish-pet $GITHUB_REF_NAME" \
-            --notes "蓝色大肥鱼 · 桌面宠物（Windows 免安装便携版）
-
-- big-fat-fish-pet_win_portable.exe — 单文件便携版，双击直接运行
-- big-fat-fish-pet_win_portable.zip — exe + 使用说明
-
-支持 Win10 / Win11（需系统自带 WebView2）。
-
-致谢：复刻自 https://github.com/PC2005-cloud/dsh-pet 的交互逻辑与动画素材，
-版权归原作者所有，仅限个人使用。" \
+            --notes-file /tmp/release_notes.md \
             --draft
